@@ -1,19 +1,19 @@
 # syntax=docker/dockerfile:1
-# StoryMotion AI — production image
-# Deploys the full stack in a single container: Next.js app + SQLite + local storage + ffmpeg.
+# StoryMotion AI — image produksi
+# Men-deploy seluruh stack dalam satu container: aplikasi Next.js + SQLite + penyimpanan lokal + ffmpeg.
 
-# ---------- Stage 1: dependencies ----------
+# ---------- Tahap 1: dependensi ----------
 FROM node:22-slim AS deps
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-# Native modules (better-sqlite3) may need compilation when no prebuild exists.
+# Modul native (better-sqlite3) mungkin perlu dikompilasi bila tidak ada prebuild.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# ---------- Stage 2: build ----------
+# ---------- Tahap 2: build ----------
 FROM node:22-slim AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -21,7 +21,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-# ---------- Stage 3: runtime ----------
+# ---------- Tahap 3: runtime ----------
 FROM node:22-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
@@ -30,7 +30,7 @@ ENV NODE_ENV=production \
 RUN groupadd --system --gid 1001 nodejs \
     && useradd --system --uid 1001 --gid nodejs --create-home nextjs
 
-# ffmpeg comes from ffmpeg-static inside node_modules (Linux x64 binary).
+# ffmpeg berasal dari ffmpeg-static di dalam node_modules (biner Linux x64).
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
@@ -42,8 +42,8 @@ COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/src/generated ./src/generated
 COPY entrypoint.sh ./entrypoint.sh
 
-# Persistent data (SQLite DB + uploaded/generated files) lives in /data,
-# mounted as a volume via docker-compose.yml.
+# Data persisten (DB SQLite + file yang diunggah/dihasilkan) berada di /data,
+# di-mount sebagai volume melalui docker-compose.yml.
 RUN mkdir -p /data \
     && chown -R nextjs:nodejs /data \
     && chmod +x /app/entrypoint.sh

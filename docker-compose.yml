@@ -8,25 +8,25 @@ services:
       - "${PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
-      # Absolute paths inside the /data volume so DB + files survive restarts.
+      # Path absolut di dalam volume /data agar DB + file tetap ada saat restart.
       - DATABASE_URL=file:/data/app.db
       - STORAGE_LOCAL_PATH=/data/storage
       - STORAGE_PROVIDER=local
 
-      # AI mode. "mock" runs the full pipeline locally with no API keys.
+      # Mode AI. "mock" menjalankan seluruh pipeline secara lokal tanpa kunci API.
       - AI_MODE=${AI_MODE:-mock}
       - LLM_PROVIDER=${LLM_PROVIDER:-mock}
       - IMAGE_PROVIDER=${IMAGE_PROVIDER:-mock}
       - VIDEO_PROVIDER=${VIDEO_PROVIDER:-mock}
-      # Linux container has no Windows speech engine — use mock unless a real TTS is configured.
+      # Container Linux tidak punya mesin suara Windows — gunakan mock kecuali TTS asli dikonfigurasi.
       - TTS_PROVIDER=${TTS_PROVIDER:-mock}
       - MUSIC_PROVIDER=${MUSIC_PROVIDER:-mock}
 
-      # Required secrets (set in .env — see .env.docker.example)
-      - AUTH_SECRET=${AUTH_SECRET:?Set AUTH_SECRET in .env}
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env}
+      # Secret yang wajib diisi (atur di .env — lihat .env.docker.example)
+      - AUTH_SECRET=${AUTH_SECRET:?Set AUTH_SECRET di .env}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:?Set ENCRYPTION_KEY di .env}
 
-      # Optional live providers — leave empty to keep using mock.
+      # Provider live opsional — biarkan kosong untuk tetap memakai mock.
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
       - OPENAI_LLM_MODEL=${OPENAI_LLM_MODEL:-gpt-4o-mini}
