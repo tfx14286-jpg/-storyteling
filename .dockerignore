@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+.gitignore
+dev.db
+dev.db-journal
+dev.log
+storage
+*.log
+.env
+.env.*
+!.env.docker.example
+coverage
+.DS_Store
+*.tsbuildinfo

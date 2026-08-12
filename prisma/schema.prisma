@@ -1,0 +1,338 @@
+// STORYMOTION AI - Prisma schema
+// Portable between SQLite (local dev) and PostgreSQL (production).
+// Status/type fields use plain strings (not enums) so the schema works on both.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("USER") // USER | ADMIN
+  credits      Int      @default(0)
+  disabled     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  projects          Project[]
+  sessions          Session[]
+  assets            Asset[]
+  creditTransactions CreditTransaction[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Project {
+  id            String   @id @default(cuid())
+  userId        String
+  title         String
+  description   String   @default("")
+  language      String   @default("id") // id | en | ms | ...
+  durationSec   Int      @default(60)
+  aspectRatio   String   @default("16:9") // 16:9 | 9:16 | 1:1
+  style         String   @default("2D Documentary")
+  voice         String   @default("Male")
+  tone          String   @default("Educational")
+  status        String   @default("DRAFT") // DRAFT|SCRIPT|STORYBOARD|IMAGES|ANIMATED|VOICE|MUSIC|READY|RENDERING|COMPLETED|FAILED
+  script        Json?
+  styleBible    Json?
+  storyboard    Json?
+  thumbnailUrl  String?
+  version       Int      @default(1)
+  progress      Int      @default(0)
+  error         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenes        Scene[]
+  characters    Character[]
+  environments  Environment[]
+  assets        Asset[]
+  voices        Voice[]
+  audioTracks   AudioTrack[]
+  subtitles     Subtitle[]
+  jobs          GenerationJob[]
+  renderJobs    RenderJob[]
+  settings      ProjectSettings?
+  snapshots     ProjectSnapshot[]
+  creditTransactions CreditTransaction[]
+}
+
+model Scene {
+  id                String   @id @default(cuid())
+  projectId         String
+  sceneNumber       Int
+  order             Int      @default(0)
+  duration          Float    @default(7)
+  narration         String   @default("")
+  visualDescription String   @default("")
+  characters        Json?
+  background        String   @default("")
+  cameraMovement    String   @default("Static") // Zoom In | Pan Left | ...
+  shotType          String   @default("Wide Shot")
+  animation         String   @default("Subtle")
+  soundEffect       String?
+  transition        String   @default("Cut")
+  imagePrompt       String?
+  negativePrompt    String?
+  composition       String?
+  lighting          String?
+  emotion           String?
+  status            String   @default("PENDING") // PENDING|GENERATED|FAILED|ANIMATED|READY
+  imageUrl          String?
+  imageThumbnails   Json?
+  videoUrl          String?
+  voiceUrl          String?
+  seed             Int?
+  providerUsed      String?
+  error             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  jobs     GenerationJob[]
+
+  @@index([projectId])
+  @@index([projectId, sceneNumber])
+}
+
+model Character {
+  id               String   @id @default(cuid())
+  projectId        String
+  charId           String // CHAR_001
+  name             String
+  age              Int?
+  gender           String?
+  appearance       String?
+  clothing         String?
+  colors           String?
+  body             String?
+  personality      String?
+  expressions      Json?
+  accessories      String?
+  referenceImageUrl String?
+  prompt           String?
+  seed             Int?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model Environment {
+  id              String   @id @default(cuid())
+  projectId       String
+  envId           String // ENV_001
+  name            String
+  architecture    String?
+  environment     String?
+  lighting        String?
+  colorPalette    String?
+  description     String?
+  referenceImageUrl String?
+  prompt          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model Asset {
+  id          String   @id @default(cuid())
+  projectId   String?
+  userId      String
+  type        String // IMAGE|VIDEO|AUDIO|SUBTITLE|THUMBNAIL|REFERENCE|RENDER
+  url         String
+  path        String?
+  storageKey  String?
+  providerUsed String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([projectId])
+}
+
+model Voice {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String   @default("Narrator")
+  gender      String   @default("Male")
+  language    String   @default("id")
+  quality     String   @default("standard")
+  settings    Json?
+  url         String?
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model AudioTrack {
+  id        String   @id @default(cuid())
+  projectId String
+  sceneId   String?
+  type      String // MUSIC|SFX|VOICE|INTRO|OUTRO
+  url       String?
+  startTime Float    @default(0)
+  duration  Float?
+  volume    Float    @default(0.2)
+  title     String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Subtitle {
+  id        String   @id @default(cuid())
+  projectId String
+  sceneId   String?
+  lang      String   @default("id")
+  format    String   @default("SRT") // SRT | VTT
+  content   String
+  url       String?
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model GenerationJob {
+  id           String   @id @default(cuid())
+  projectId    String?
+  sceneId      String?
+  type         String // script_generation|storyboard_generation|character_generation|image_generation|video_generation|tts_generation|subtitle_generation|audio_mix|quality_check|thumbnail_generation
+  status       String   @default("QUEUED") // QUEUED|ACTIVE|COMPLETED|FAILED|RETRY
+  progress     Int      @default(0)
+  result       Json?
+  error        String?
+  retryCount   Int      @default(0)
+  providerUsed String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  completedAt  DateTime?
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scene   Scene?   @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model RenderJob {
+  id           String   @id @default(cuid())
+  projectId    String
+  status       String   @default("QUEUED") // QUEUED|RENDERING|COMPLETED|FAILED
+  progress     Int      @default(0)
+  resolution   String   @default("1080p")
+  fps          Int      @default(30)
+  format       String   @default("mp4")
+  aspectRatio  String   @default("16:9")
+  subtitleEnabled Boolean @default(true)
+  watermarkEnabled Boolean @default(false)
+  url          String?
+  error        String?
+  config       Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  completedAt  DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model ProjectSettings {
+  id               String   @id @default(cuid())
+  projectId        String   @unique
+  resolution       String   @default("1080p")
+  fps              Int      @default(30)
+  transitionPreset String   @default("Auto")
+  musicCategory    String   @default("Documentary")
+  subtitleStyle    Json?
+  renderSettings   Json?
+  musicEnabled     Boolean  @default(true)
+  sfxEnabled       Boolean  @default(true)
+  subtitleEnabled  Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ProjectSnapshot {
+  id        String   @id @default(cuid())
+  projectId String
+  version   Int
+  name      String?
+  data      Json
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model AIProvider {
+  id         String   @id @default(cuid())
+  category   String // LLM|IMAGE|VIDEO|TTS|MUSIC|STORAGE
+  name       String
+  provider   String // mock|openai|anthropic|replicate|stability|elevenlabs|windows|local|s3
+  isActive   Boolean  @default(true)
+  isFallback Boolean  @default(false)
+  priority   Int      @default(0)
+  config     Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  apiKeys ApiKey[]
+}
+
+model ApiKey {
+  id            String   @id @default(cuid())
+  providerId    String
+  keyEncrypted  String
+  keyHint       String   @default("")
+  lastUsedAt    DateTime?
+  createdAt     DateTime @default(now())
+
+  provider AIProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+}
+
+model CreditTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  projectId   String?
+  amount      Int
+  type        String   @default("USAGE") // USAGE|PURCHASE|REFUND|ADMIN|BONUS
+  description String   @default("")
+  createdAt   DateTime @default(now())
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

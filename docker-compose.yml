@@ -1,0 +1,53 @@
+services:
+  storyteling:
+    build: .
+    image: storyteling:latest
+    container_name: storyteling
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      # Absolute paths inside the /data volume so DB + files survive restarts.
+      - DATABASE_URL=file:/data/app.db
+      - STORAGE_LOCAL_PATH=/data/storage
+      - STORAGE_PROVIDER=local
+
+      # AI mode. "mock" runs the full pipeline locally with no API keys.
+      - AI_MODE=${AI_MODE:-mock}
+      - LLM_PROVIDER=${LLM_PROVIDER:-mock}
+      - IMAGE_PROVIDER=${IMAGE_PROVIDER:-mock}
+      - VIDEO_PROVIDER=${VIDEO_PROVIDER:-mock}
+      # Linux container has no Windows speech engine — use mock unless a real TTS is configured.
+      - TTS_PROVIDER=${TTS_PROVIDER:-mock}
+      - MUSIC_PROVIDER=${MUSIC_PROVIDER:-mock}
+
+      # Required secrets (set in .env — see .env.docker.example)
+      - AUTH_SECRET=${AUTH_SECRET:?Set AUTH_SECRET in .env}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env}
+
+      # Optional live providers — leave empty to keep using mock.
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+      - OPENAI_LLM_MODEL=${OPENAI_LLM_MODEL:-gpt-4o-mini}
+      - IMAGE_API_KEY=${IMAGE_API_KEY:-}
+      - IMAGE_BASE_URL=${IMAGE_BASE_URL:-}
+      - IMAGE_MODEL=${IMAGE_MODEL:-}
+      - VIDEO_API_KEY=${VIDEO_API_KEY:-}
+      - VIDEO_BASE_URL=${VIDEO_BASE_URL:-}
+      - VIDEO_MODEL=${VIDEO_MODEL:-}
+      - OPENAI_TTS_KEY=${OPENAI_TTS_KEY:-}
+      - OPENAI_TTS_MODEL=${OPENAI_TTS_MODEL:-gpt-4o-mini-tts}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+      - ELEVENLABS_VOICE_ID=${ELEVENLABS_VOICE_ID:-}
+    volumes:
+      - storyteling_data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/login',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  storyteling_data:

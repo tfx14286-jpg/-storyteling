@@ -29,9 +29,16 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+dev.log
+
+# local runtime data
+dev.db
+dev.db-journal
+storage/
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.docker.example
 
 # vercel
 .vercel
