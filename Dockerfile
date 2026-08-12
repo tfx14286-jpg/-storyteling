@@ -27,7 +27,10 @@ WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000
-RUN groupadd --system --gid 1001 nodejs \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system --gid 1001 nodejs \
     && useradd --system --uid 1001 --gid nodejs --create-home nextjs
 
 # ffmpeg berasal dari ffmpeg-static di dalam node_modules (biner Linux x64).
@@ -46,6 +49,8 @@ COPY entrypoint.sh ./entrypoint.sh
 # di-mount sebagai volume melalui docker-compose.yml.
 RUN mkdir -p /data \
     && chown -R nextjs:nodejs /data \
+    && chown -R nextjs:nodejs /app/node_modules/@prisma \
+    && chown -R nextjs:nodejs /app/.next \
     && chmod +x /app/entrypoint.sh
 
 USER nextjs
